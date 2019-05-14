@@ -1,6 +1,6 @@
 //
-//  Configurable.swift
-//  BeamWallet
+// Configurable.swift
+// BeamWallet
 //
 // Copyright 2018 Beam Development
 //
@@ -75,8 +75,6 @@ extension Configurable where Self: Delegating {
 }
 
 protocol DynamicContentHeight {
-    
-    associatedtype ContentModel
-    
-    static func height(with contentModel: ContentModel, constrainedWidth width: CGFloat) -> CGFloat
+        
+    static func height() -> CGFloat
 }

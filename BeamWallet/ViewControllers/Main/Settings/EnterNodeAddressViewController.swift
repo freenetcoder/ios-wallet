@@ -37,10 +37,8 @@ class EnterNodeAddressViewController: BaseViewController {
         
         nodeAddressView.backgroundColor = UIColor.main.marineTwo
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(onSave))
-        navigationItem.rightBarButtonItem?.tintColor = UIColor.main.brightTeal
-        navigationItem.rightBarButtonItem?.isEnabled = false
-        
+        addRightButton(title:"Save", targer: self, selector: #selector(onSave), enabled: false)
+
         oldAddress = Settings.sharedManager().nodeAddress
         nodeAddressField.text = oldAddress
         
@@ -51,19 +49,14 @@ class EnterNodeAddressViewController: BaseViewController {
         super.viewDidDisappear(animated)
     }
     
-    @objc func textFieldDidChange(_ textField: BMField) {
+    @objc func textFieldDidChange(_ textField: UITextField) {
         if let address = nodeAddressField.text {
             
             if address.isEmpty {
-                navigationItem.rightBarButtonItem?.isEnabled = false
+                enableRightButton(enabled: false)
             }
             else{
-                if address != oldAddress {
-                    navigationItem.rightBarButtonItem?.isEnabled = true
-                }
-                else{
-                    navigationItem.rightBarButtonItem?.isEnabled = false
-                }
+                enableRightButton(enabled: (address != oldAddress ) ? true : false )
             }
         }
     }
@@ -86,6 +79,7 @@ class EnterNodeAddressViewController: BaseViewController {
                 }
                 else{
                     completion?(true)
+                    
                     self.navigationController?.popViewController(animated: true)
                 }
             }
@@ -102,6 +96,33 @@ extension EnterNodeAddressViewController : UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
 
+        return true
+    }
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+
+        let textFieldText: NSString = (textField.text ?? "") as NSString
+        
+        let txtAfterUpdate = textFieldText.replacingCharacters(in: range, with: string)
+        
+        if txtAfterUpdate.countInstances(of: ":") > 1 {
+            return false
+        }
+        else if txtAfterUpdate.contains(":") {
+            let splited = txtAfterUpdate.split(separator: ":")
+            if splited.count == 2 {
+                let port = String(splited[1])
+                let portRange = (txtAfterUpdate as NSString).range(of: String(port))
+
+                if port.isEmpty == false && string == ":" {
+                    return false
+                }
+                else if range.intersection(portRange) != nil || port.lengthOfBytes(using: .utf8) == 1 {
+                    return (port.isNumeric() && port.isValidPort())
+                }
+            }
+        }
+        
         return true
     }
 }

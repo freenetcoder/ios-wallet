@@ -21,15 +21,18 @@ class SettingsCell: BaseCell {
     @IBOutlet private weak var detailLabel: UILabel!
     @IBOutlet private weak var mainView: UIView!
     @IBOutlet private weak var switchView: UISwitch!
-    @IBOutlet private weak var botLineView: UIView!
     @IBOutlet private weak var arrowView: UIImageView!
     @IBOutlet private weak var titleXOffset: NSLayoutConstraint!
 
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        backgroundColor = UIColor.clear
+        backgroundColor = UIColor.main.marineTwo
         mainView.backgroundColor = UIColor.main.marineTwo
+        
+        let selectedView = UIView()
+        selectedView.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+        self.selectedBackgroundView = selectedView
     }
 
     override func setSelected(_ selected: Bool, animated: Bool) {
@@ -45,6 +48,8 @@ extension SettingsCell: Configurable {
     
     func configure(with item:SettingsViewModel.SettingsItem) {
 
+        titleLabel.textColor = UIColor.white
+        
         titleLabel?.text = item.title
         detailLabel?.text = item.detail
         
@@ -60,16 +65,21 @@ extension SettingsCell: Configurable {
             selectionStyle = item.id == 0 ? .none : .default
         }
         
-        if item.id == 5 || item.id == 6 || item.id == 7 || item.id == 2 || item.id == 1
-            || item.id == 8 {
+        if let category = item.category {
             arrowView.isHidden = false
             titleXOffset.constant = 25
+            titleLabel.textColor = UIColor.init(hexString: category.color)
         }
         else{
-            arrowView.isHidden = true
-            titleXOffset.constant = 15
-        }
-        
-        botLineView.isHidden = item.position == SettingsViewModel.SettingsItem.Position.midle
+            if item.id == 5 || item.id == 6 || item.id == 7 || item.id == 2 || item.id == 1
+                || item.id == 8 {
+                arrowView.isHidden = false
+                titleXOffset.constant = 25
+            }
+            else{
+                arrowView.isHidden = true
+                titleXOffset.constant = 15
+            }
+        }                
     }
 }

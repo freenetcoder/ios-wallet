@@ -69,6 +69,7 @@ class BMWordField: BMField {
         setupSuggestionsView()
     }
     
+    
     private func setupSuggestionsView() {
         accessoryView = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
 
@@ -119,21 +120,27 @@ class BMWordField: BMField {
             updateAccessoryViewPrefix(prefix: txt)
         }
     }
-        
+    
+    public func tryAutoInsertWord() {
+        if self.inputAccessoryView != nil, let text = self.text {
+            var words = MnemonicModel.mnemonicWords(forPrefix: text, suggestions: suggestions) as [String]
+            if words.count == 1 {
+                if words[0] != text {
+                    self.text = words[0]
+                }
+            }
+        }
+    }
+    
     private func updateAccessoryViewPrefix(prefix:String) {
         var words = MnemonicModel.mnemonicWords(forPrefix: prefix, suggestions: suggestions) as [String]
         
-//        if words.count == 1 {
-//            self.text = words[0]
-//            
-//            _ = self.delegate?.textFieldShouldReturn!(self)
-//        }
         
         for btn in accessoryOptions {
             btn.setAttributedTitle(nil, for: .normal)
         }
 
-        if words.count > 0 {
+        if words.count == 1 {
             var recommendFirstWord = (words.count == 1)
 
             if !recommendFirstWord && words.count != 0 && words[0].hasPrefix(prefix) {
@@ -170,14 +177,14 @@ class BMWordField: BMField {
                 let range = (word as NSString).range(of: String(prefix))
 
                 if range.location == 0 && range.length > 0 {
-                    attributedTitle.addAttribute(NSAttributedString.Key.font, value: UIFont(name: "SFProDisplay-Bold", size: 15) ?? UIFont.boldSystemFont(ofSize: 15) , range: range)
+                    attributedTitle.addAttribute(NSAttributedString.Key.font, value: BoldFont(size: 15) , range: range)
                 }
 
                 if range.length < word.lengthOfBytes(using: .utf8) {
-                    attributedTitle.addAttribute(NSAttributedString.Key.font, value: UIFont(name: "SFProDisplay-Regular", size: 15) ?? UIFont.systemFont(ofSize: 15) , range: NSRange(location: range.length, length: word.lengthOfBytes(using: .utf8) - range.length))
+                    attributedTitle.addAttribute(NSAttributedString.Key.font, value: RegularFont(size: 15) , range: NSRange(location: range.length, length: word.lengthOfBytes(using: .utf8) - range.length))
                 }
                 else{
-                    attributedTitle.addAttribute(NSAttributedString.Key.font, value: UIFont(name: "SFProDisplay-Regular", size: 15) ?? UIFont.systemFont(ofSize: 15) , range: NSRange(location: 0, length: word.lengthOfBytes(using: .utf8)))
+                    attributedTitle.addAttribute(NSAttributedString.Key.font, value:RegularFont(size: 15) , range: NSRange(location: 0, length: word.lengthOfBytes(using: .utf8)))
                 }
 
                 button.setAttributedTitle(attributedTitle, for: .normal)

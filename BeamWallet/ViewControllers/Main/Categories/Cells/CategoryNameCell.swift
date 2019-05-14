@@ -1,5 +1,5 @@
 //
-// NewsViewController.swift
+// CategoryNameCell.swift
 // BeamWallet
 //
 // Copyright 2018 Beam Development
@@ -19,23 +19,21 @@
 
 import UIKit
 
-class NewsViewController: BaseViewController {
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        // Do any additional setup after loading the view.
+class CategoryNameCell: BaseCell {
+    
+    @IBOutlet weak private var nameLabel: UILabel!
+    
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        
+        selectionStyle = .none
     }
+}
 
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
+extension CategoryNameCell: Configurable {
+    
+    func configure(with category:BMCategory) {
+        nameLabel.text = category.name
+        nameLabel.textColor = UIColor.init(hexString: category.color)
     }
-    */
-
 }

@@ -25,7 +25,7 @@ class EditAddressViewController: BaseViewController {
     private var address:BMAddress!
     private var oldAddress:BMAddress!
     
-    private var details = [TransactionViewController.TransactionGeneralInfo]()
+    private var details = [GeneralInfo]()
     
     @IBOutlet private weak var tableView: UITableView!
     @IBOutlet private weak var saveButton: UIButton!
@@ -57,7 +57,7 @@ class EditAddressViewController: BaseViewController {
         title = "Edit address"
         
         tableView.keyboardDismissMode = .interactive
-        tableView.register(GeneralTransactionInfoCell.self)
+        tableView.register(GeneralInfoCell.self)
         tableView.register(AddressSwitchCell.self)
         tableView.register(AddressExpireCell.self)
         tableView.register(AddressCommentCell.self)
@@ -107,10 +107,10 @@ class EditAddressViewController: BaseViewController {
     private func fillDetails() {
         details.removeAll()
         
-        details.append(TransactionViewController.TransactionGeneralInfo(text: "Address ID:", detail: address.walletId, failed: false, canCopy:true))
+        details.append(GeneralInfo(text: "Address ID:", detail: address.walletId, failed: false, canCopy:true, color: UIColor.white))
         
         if address.isExpired() {
-            details.append(TransactionViewController.TransactionGeneralInfo(text: "Expired:", detail: address.formattedDate(), failed: false, canCopy:false))
+            details.append(GeneralInfo(text: "Expired:", detail: address.formattedDate(), failed: false, canCopy:false, color: UIColor.white))
         }
         
         tableView.reloadData()
@@ -181,7 +181,7 @@ extension EditAddressViewController : UITableViewDataSource {
             }
             else{
                 let cell =  tableView
-                    .dequeueReusableCell(withType: GeneralTransactionInfoCell.self, for: indexPath)
+                    .dequeueReusableCell(withType: GeneralInfoCell.self, for: indexPath)
                     .configured(with: details[indexPath.row])
                 
                 return cell

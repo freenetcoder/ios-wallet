@@ -43,7 +43,7 @@ class ConfirmPhraseViewController: BaseWizardViewController {
                     }
                     
                     if !added {
-                        inputWords.append(BMWord(word: "", index: index, correct: false))
+                        inputWords.append(BMWord(word: String.empty(), index: index, correct: false))
                     }
                 }
             }
@@ -53,7 +53,7 @@ class ConfirmPhraseViewController: BaseWizardViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        self.title = "confirm_seed".localized
+        self.title = LocalizableStrings.confirm_seed
         
         if Device.isZoomed {
             stackY?.constant = 10
@@ -67,6 +67,10 @@ class ConfirmPhraseViewController: BaseWizardViewController {
         }
         
         collectionView.register(UINib(nibName: InputWordCell.nib, bundle: nil), forCellWithReuseIdentifier: InputWordCell.reuseIdentifier)
+        
+        addCustomBackButton(target: self, selector: #selector(onBack))
+        
+        hideKeyboardWhenTappedAround()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -83,6 +87,14 @@ class ConfirmPhraseViewController: BaseWizardViewController {
     }
     
 // MARK: IBAction
+    @objc private func onBack() {
+        self.confirmAlert(title: LocalizableStrings.seed_back_title, message: LocalizableStrings.seed_back_text, cancelTitle: LocalizableStrings.cancel, confirmTitle: LocalizableStrings.generate, cancelHandler: { (_ ) in
+            
+        }) { (_ ) in
+            self.navigationController?.popViewController(animated: true)
+        }
+    }
+    
     @IBAction func onNext(sender :UIButton) {
         let vc = CreateWalletPasswordViewController()
             .withPhrase(phrase: words.joined(separator: ";"))
@@ -127,16 +139,9 @@ extension ConfirmPhraseViewController : InputWordCellCellDelegate {
             if let cell = collectionView.cellForItem(at: IndexPath(row: path.row + 1, section: 0)) as? InputWordCell {
                  cell.startEditing()
             }
-            
-//            //find next field
-//            for i in 0 ... maxWords - 1 {
-//                if inputWords[i].value.isEmpty {
-//                    let cell = collectionView.cellForItem(at: IndexPath(row: i, section: 0)) as! InputWordCell
-//                    cell.startEditing()
-//
-//                    break;
-//                }
-//            }
+            else{
+                self.view.endEditing(true)
+            }
         }
     }
 

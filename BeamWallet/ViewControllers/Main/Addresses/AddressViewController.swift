@@ -64,29 +64,29 @@ class AddressViewController: BaseViewController {
     }
     
     @objc private func onMore(sender:UIBarButtonItem) {
-        let frame = CGRect(x: UIScreen.main.bounds.size.width-80, y: 44, width: 60, height: 40)
-        var items = [BMPopoverMenu.BMPopoverMenuItem(name: "Show QR code", icon: "iconScanQr", id:1), BMPopoverMenu.BMPopoverMenuItem(name: "Copy address", icon: "iconCopyWhite24", id:2), BMPopoverMenu.BMPopoverMenuItem(name: "Edit address", icon: "iconEdit", id:3), BMPopoverMenu.BMPopoverMenuItem(name: "Delete address", icon: "iconDelete", id:4)]
+
+        var items = [BMPopoverMenu.BMPopoverMenuItem(name: "Show QR code", icon: nil, action:.show_qr_code), BMPopoverMenu.BMPopoverMenuItem(name: "Copy address", icon:nil, action:.copy_address), BMPopoverMenu.BMPopoverMenuItem(name: "Edit address", icon:nil, action: .edit_address), BMPopoverMenu.BMPopoverMenuItem(name: "Delete address", icon: nil, action: .delete_address)]
         
         if isContact {
             items.remove(at: 2)
         }
 
-        BMPopoverMenu.showForSenderFrame(senderFrame: frame, with: items, done: { (selectedItem) in
+        BMPopoverMenu.show(menuArray: items, done: { (selectedItem) in
             if let item = selectedItem {
-                switch (item.id) {
-                case 1:
-                    let modalViewController = WalletQRCodeViewController().withAddress(address: self.address.walletId, amount: nil)
+                switch (item.action) {
+                case .show_qr_code:
+                    let modalViewController = WalletQRCodeViewController(address: self.address.walletId, amount: nil)
                     modalViewController.modalPresentationStyle = .overFullScreen
                     modalViewController.modalTransitionStyle = .crossDissolve
                     self.present(modalViewController, animated: true, completion: nil)
-                case 2 :
+                case .copy_address :
                     UIPasteboard.general.string = self.address.walletId
                     SVProgressHUD.showSuccess(withStatus: "copied to clipboard")
                     SVProgressHUD.dismiss(withDelay: 1.5)
-                case 3 :
+                case .edit_address :
                     let vc = EditAddressViewController(address: self.address)
                     self.pushViewController(vc: vc)
-                case 4 :
+                case .delete_address :
                     AppModel.sharedManager().deleteAddress(self.address.walletId)
                     
                     NotificationManager.sharedManager.unSubscribeToTopic(topic: self.address.walletId)
@@ -127,9 +127,8 @@ extension AddressViewController : UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         
         if indexPath.section == 1 {
-            let vc = TransactionViewController()
+            let vc = TransactionViewController(transaction: transactions[indexPath.row])
             vc.hidesBottomBarWhenPushed = true
-            vc.configure(with: transactions[indexPath.row])
             pushViewController(vc: vc)
         }
     }

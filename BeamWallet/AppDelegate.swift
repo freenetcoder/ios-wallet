@@ -26,6 +26,10 @@ import FirebaseMessaging
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
+    //TODO: all targets uses masternet!!!!
+    
+    public static let isEnableNewFeatures = false
+    
     private var scannedTGUserId = ""
 
     var securityScreen = AutoSecurityScreen()
@@ -39,7 +43,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
         UIApplication.shared.setMinimumBackgroundFetchInterval (UIApplication.backgroundFetchIntervalMinimum)
         
-        UIApplication.shared.isIdleTimerDisabled = true
+        //UIApplication.shared.isIdleTimerDisabled = true
 
         FirebaseConfiguration.shared.setLoggerLevel(.min)
         FirebaseApp.configure()
@@ -73,17 +77,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
+   
+    }
+
+    func applicationDidEnterBackground(_ application: UIApplication) {
+
         //TODO: notification - close db
         if AppModel.sharedManager().isLoggedin && !AppModel.sharedManager().isRestoreFlow
             && Settings.sharedManager().target == Testnet {
             AppModel.sharedManager().isConnecting = true
             AppModel.sharedManager().resetWallet(false)
         }
-    }
-
-    func applicationDidEnterBackground(_ application: UIApplication) {
-
-        if AppModel.sharedManager().isRestoreFlow {
+        else if AppModel.sharedManager().isRestoreFlow {
             registerBackgroundTask()
         }
     }
@@ -126,23 +131,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     private func tryLinkingBot(url:URL) {
-        if let params = url.queryParameters {
-            if let id = params["user_id"], let name = params["username"] {
-                TGBotManager.sharedManager.user.userId = id
-                TGBotManager.sharedManager.user.userName = name
-
-                if AppModel.sharedManager().isLoggedin {
-                    TGBotManager.sharedManager.startLinking { (_ ) in
-                        
-                    }
+        if TGBotManager.sharedManager.isValidUserFromUrl(url: url) {
+            if AppModel.sharedManager().isLoggedin {
+                TGBotManager.sharedManager.startLinking { (_ ) in
+                    
                 }
-                else{
-                    if let vc = UIApplication.getTopMostViewController() {
-                        vc.alert(title: "Telegram bot", message: "Please open wallet to link telegram bot") { (_ ) in
-                            
-                            if let passVC = UIApplication.getTopMostViewController() as? EnterWalletPasswordViewController {
-                                passVC.biometricAuthorization()
-                            }
+            }
+            else{
+                if let vc = UIApplication.getTopMostViewController() {
+                    vc.alert(title: "Telegram bot", message: "Please open wallet to link telegram bot") { (_ ) in
+                        
+                        if let passVC = UIApplication.getTopMostViewController() as? EnterWalletPasswordViewController {
+                            passVC.biometricAuthorization()
                         }
                     }
                 }
@@ -154,12 +154,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
        
         if let url = userActivity.webpageURL {
             if ((UIApplication.getTopMostViewController() as? EnterWalletPasswordViewController) != nil) {
-                if let params = url.queryParameters {
-                    if let id = params["user_id"], let name = params["username"] {
-                        TGBotManager.sharedManager.user.userId = id
-                        TGBotManager.sharedManager.user.userName = name
-                    }
-                }
+                _ = TGBotManager.sharedManager.isValidUserFromUrl(url: url)
             }
             else{
                 tryLinkingBot(url: url)

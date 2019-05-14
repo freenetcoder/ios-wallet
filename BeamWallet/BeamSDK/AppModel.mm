@@ -27,6 +27,7 @@
 #import "StringStd.h"
 #import "NodeModel.h"
 #import "DiskStatusManager.h"
+#import "CurrencyFormatter.h"
 
 #import <SSZipArchive/SSZipArchive.h>
 
@@ -53,7 +54,7 @@ using namespace std;
 using namespace beam::io;
 
 static int proofSize = 330;
-static NSString *deletedAddressesKEY = @"deletedAddresses";
+static NSString *categoriesKey = @"categoriesKey";
 
 @implementation AppModel  {
     BOOL isStarted;
@@ -94,6 +95,8 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     _transactions = [[NSMutableArray alloc] init];
     
     _contacts = [[NSMutableArray alloc] init];
+    
+    _categories = [[NSMutableArray alloc] initWithArray:[self allCategories]];
     
     [self checkInternetConnection];
     
@@ -312,7 +315,7 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     seed.assign(buf.data(), buf.size());
 
     //create wallet db
-    walletDb = WalletDB::init(dbFilePath, SecString(pass.string), seed.hash(), walletReactor);
+     walletDb = WalletDB::init(dbFilePath, SecString(pass.string), seed.hash(), walletReactor);
     
     if (!walletDb) {
         return NO;
@@ -651,19 +654,14 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     }
 }
 
--(BOOL)isAddressDeleted:(NSString*_Nullable)address {
-    NSMutableArray *deletedAddresses = [NSMutableArray arrayWithArray:[[NSUserDefaults standardUserDefaults]objectForKey:deletedAddressesKEY]];
-    
-    for (NSString *a in deletedAddresses) {
-        if ([a isEqualToString:address]){
-            return YES;
-        }
-    }
-    
-    return NO;
-}
 
 -(void)generateNewWalletAddress {
+    wallet->getAsync()->generateNewAddress();
+}
+    
+-(void)generateNewWalletAddressWithBlock:(NewAddressGeneratedBlock _Nonnull )block{
+    self.generatedNewAddressBlock = block;
+    
     wallet->getAsync()->generateNewAddress();
 }
 
@@ -703,10 +701,29 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
 }
 
 -(void)editAddress:(BMAddress*_Nonnull)address {
-    
     WalletID walletID(Zero);
     if (walletID.FromHex(address.walletId.string))
     {
+        //TODO: ENABLE for categories
+        
+//        std::vector<WalletAddress> addresses = walletDb->getAddresses(true);
+//
+//        for (int i=0; i<addresses.size(); i++)
+//        {
+//            NSString *wAddress = [NSString stringWithUTF8String:to_string(addresses[i].m_walletID).c_str()];
+//
+//            NSString *wCategory = [NSString stringWithUTF8String:addresses[i].m_category.c_str()];
+//
+//            if ([wAddress isEqualToString:address.walletId] && ![wCategory isEqualToString:address.category])
+//            {
+//                addresses[i].m_category = address.category.string;
+//
+//                wallet->getAsync()->saveAddress(addresses[i], true);
+//
+//                break;
+//            }
+//        }
+        
         if(address.isNowExpired) {
             wallet->getAsync()->saveAddressChanges(walletID, address.label.string, false, false, true);
         }
@@ -722,8 +739,10 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
             if (address.isExpired) {
                 wallet->getAsync()->saveAddressChanges(walletID, address.label.string, false, false, true);
             }
-            else{
-                wallet->getAsync()->saveAddressChanges(walletID, address.label.string, (address.duration == 0 ? true : false), true, false);
+            else  {
+                address.isChangedDate = YES;
+                
+                wallet->getAsync()->saveAddressChanges(walletID, address.label.string, (address.duration == 0 ? true : false), address.isChangedDate ? true : false, false);
             }
         }
     }
@@ -733,6 +752,19 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     for (BMAddress *add in _walletAddresses) {
         [self deleteAddress:add.walletId];
     }
+}
+
+-(NSString*_Nonnull)generateQRCodeString:(NSString*_Nonnull)address amount:(NSString*_Nullable)amount {
+    
+    NSString *qrString = [NSString stringWithFormat:@"beam:%@",address];
+    if (amount!=nil) {
+        NSString *trimmed = [amount stringByReplacingOccurrencesOfString:@"," withString:@"."];
+        if (trimmed.doubleValue > 0) {
+            qrString = [qrString stringByAppendingString:[NSString stringWithFormat:@"?amount=%@",trimmed]];
+        }
+    }
+    
+    return  qrString;
 }
 
 #pragma mark - Delegates
@@ -757,14 +789,27 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     return errorString;
 }
 
--(NSString*)sendError:(double)amount fee:(double)fee to:(NSString*_Nullable)to {
+-(NSString*_Nullable)canReceive:(double)amount fee:(double)fee {
+
     Amount bAmount = round(amount * Rules::Coin);
     Amount bTotal = bAmount + fee;
+    Amount bMax = round(MAX_AMOUNT * Rules::Coin);
     
-//    if([self isExpiredAddress:to]){
-//        return @"Can't send to the expired address";
-//    }
-//    else
+    if (bTotal > bMax || (amount == MAX_AMOUNT && fee > 0))
+    {
+        NSString *beam = [CurrencyFormatter currencyFromNumber:[NSNumber numberWithDouble:MAX_AMOUNT]];
+
+        return [NSString stringWithFormat:@"Maximum amount %@ BEAMS",beam];
+    }
+    
+    return nil;
+}
+
+-(NSString*)sendError:(double)amount fee:(double)fee to:(NSString*_Nullable)to {
+    
+    Amount bAmount = round(amount * Rules::Coin);
+    Amount bTotal = bAmount + fee;
+    Amount bMax = round(MAX_AMOUNT * Rules::Coin);
 
     if(![self isValidAddress:to])
     {
@@ -776,23 +821,16 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
     else if(_walletStatus.available < bTotal)
     {
         double need = double(int64_t(bTotal - _walletStatus.available)) / Rules::Coin;
-        
-        NSNumberFormatter *currencyFormatter = [NSNumberFormatter new];
-        currencyFormatter.usesGroupingSeparator = true;
-        currencyFormatter.numberStyle = NSNumberFormatterDecimalStyle;
-        currencyFormatter.currencyCode = @"";
-        currencyFormatter.currencyCode = @"";
-        currencyFormatter.minimumIntegerDigits = 0;
-        currencyFormatter.minimumFractionDigits = 0;
-        currencyFormatter.minimumSignificantDigits = 0;
-        currencyFormatter.maximumIntegerDigits = 20;
-        currencyFormatter.maximumFractionDigits = 20;
-        currencyFormatter.maximumSignificantDigits = 20;
-        currencyFormatter.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US"];
-        
-        NSString *beam = [currencyFormatter stringFromNumber:[NSNumber numberWithDouble:need]];
-        
+
+        NSString *beam = [CurrencyFormatter currencyFromNumber:[NSNumber numberWithDouble:need]];
+
         return [NSString stringWithFormat:@"Insufficient funds: you would need %@ beams to complete the transaction",beam];
+    }
+    else if (bTotal > bMax)
+    {
+        NSString *beam = [CurrencyFormatter currencyFromNumber:[NSNumber numberWithDouble:MAX_AMOUNT]];
+        
+        return [NSString stringWithFormat:@"Maximum amount %@ BEAMS",beam];
     }
     else{
         return nil;
@@ -813,6 +851,17 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
             NSLog(@"%@",ex);
         }
     }
+}
+
+-(NSString*_Nonnull)allAmount:(double)fee {
+    Amount bAmount = _walletStatus.available - fee;
+    
+    double d = double(int64_t(bAmount)) / Rules::Coin;
+    
+    NSString *allValue =  [CurrencyFormatter currencyFromNumber:[NSNumber numberWithDouble:d]];
+    allValue = [allValue stringByReplacingOccurrencesOfString:@"," withString:@""];
+    
+    return allValue;
 }
 
 #pragma mark - Logs
@@ -1115,9 +1164,138 @@ static NSString *deletedAddressesKEY = @"deletedAddresses";
 }
 
 -(void)clearAllContacts{
+
     for (BMContact *contact in _contacts) {
         [self deleteAddress:contact.address.walletId];
     }
 }
+
+#pragma mark - Categories
+
+-(BMCategory*_Nullable)findCategoryById:(NSString*)ID {
+    if (ID.isEmpty) {
+        return nil;
+    }
     
+    for (int i=0; i<_categories.count; i++) {
+        if (_categories[i].ID == ID.intValue) {
+            return _categories[i];
+        }
+    }
+    
+    return nil;
+}
+
+-(BMCategory*_Nullable)findCategoryByAddress:(NSString*_Nonnull)ID {
+    if (ID.isEmpty) {
+        return nil;
+    }
+    
+    for (BMAddress *address in _walletAddresses) {
+        if ([address.walletId isEqualToString:ID]) {
+            return [self findCategoryById:address.category];
+        }
+    }
+    
+    return nil;
+}
+
+-(NSUInteger)findCategoryIndex:(int)ID {
+    for (int i=0; i<_categories.count; i++) {
+        if (_categories[i].ID == ID) {
+            return i;
+        }
+    }
+    
+    return 0;
+}
+
+-(NSMutableArray<BMCategory*>*_Nonnull)allCategories{
+    if ([[NSUserDefaults standardUserDefaults] objectForKey:categoriesKey]) {
+        NSData *data = [[NSUserDefaults standardUserDefaults] dataForKey:categoriesKey];
+        
+        NSMutableArray *array = [NSMutableArray arrayWithArray:[NSKeyedUnarchiver unarchiveObjectWithData:data]];
+
+        return array;
+    }
+
+    return @[].mutableCopy;
+}
+
+-(void)deleteCategory:(BMCategory*_Nonnull)category {
+    [_categories removeObjectAtIndex:[self findCategoryIndex:category.ID]];
+    
+    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:_categories];
+    [[NSUserDefaults standardUserDefaults] setObject:data forKey:categoriesKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    
+    for(id<WalletModelDelegate> delegate in [AppModel sharedManager].delegates)
+    {
+        if ([delegate respondsToSelector:@selector(onCategoriesChange)]) {
+            [delegate onCategoriesChange];
+        }
+    }
+}
+
+-(void)editCategory:(BMCategory*_Nonnull)category {
+  NSUInteger index = [self findCategoryIndex:category.ID];
+    
+  [_categories replaceObjectAtIndex:index withObject:category];
+    
+  NSData *data = [NSKeyedArchiver archivedDataWithRootObject:_categories];
+  [[NSUserDefaults standardUserDefaults] setObject:data forKey:categoriesKey];
+  [[NSUserDefaults standardUserDefaults] synchronize];
+    
+    for(id<WalletModelDelegate> delegate in [AppModel sharedManager].delegates)
+    {
+        if ([delegate respondsToSelector:@selector(onCategoriesChange)]) {
+            [delegate onCategoriesChange];
+        }
+    }
+}
+
+-(void)addCategory:(BMCategory*_Nonnull)category {
+    [_categories addObject:category];
+    
+    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:_categories];
+    [[NSUserDefaults standardUserDefaults] setObject:data forKey:categoriesKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    
+    for(id<WalletModelDelegate> delegate in [AppModel sharedManager].delegates)
+    {
+        if ([delegate respondsToSelector:@selector(onCategoriesChange)]) {
+            [delegate onCategoriesChange];
+        }
+    }
+}
+
+-(BOOL)isNameAlreadyExist:(NSString*_Nonnull)name id:(int)ID{
+    for(BMCategory *category in _categories) {
+        if (ID == 0) {
+            if ([category.name isEqualToString:name]) {
+                return YES;
+            }
+        }
+        else{
+            if ([category.name isEqualToString:name] && category.ID != ID) {
+                return YES;
+            }
+        }
+    }
+    
+    return NO;
+}
+
+-(NSMutableArray<BMAddress*>*_Nonnull)getAddressFromCategory:(BMCategory*_Nonnull)category {
+    NSMutableArray *addresses = [NSMutableArray array];
+    
+    for (BMAddress *address in _walletAddresses) {
+        if (address.category.intValue == category.ID) {
+            [addresses addObject:address];
+        }
+    }
+    
+    return addresses;
+}
+
 @end

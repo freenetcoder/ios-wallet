@@ -30,7 +30,7 @@ class NotificationManager : NSObject {
     
     weak var delegate: NotificationManagerDelegate?
 
-    static var disableApns = false
+    static var disableApns = true
     
     //MARK: Notif Status
     
@@ -195,6 +195,20 @@ class NotificationManager : NSObject {
             Messaging.messaging().unsubscribe(fromTopic: topic)
         }
     }
+    
+    public func subscribeToTopics(addresses:[BMAddress]?) {
+        if let walletAddresses = addresses {
+            for address in walletAddresses {
+                if address.isExpired() {
+                    NotificationManager.sharedManager.unSubscribeToTopic(topic: address.walletId)
+                }
+                else{
+                    NotificationManager.sharedManager.subscribeToTopic(topic: address.walletId)
+                }
+            }
+        }
+    }
+
     
     public func clearNotifications() {
         UIApplication.shared.applicationIconBadgeNumber = 0
@@ -462,18 +476,38 @@ extension NotificationManager : UNUserNotificationCenterDelegate {
             #else
             if AppModel.sharedManager().isLoggedin {
                 if let rootVC = UIApplication.getTopMostViewController() {
+                    
                     if rootVC is TransactionViewController {
                         rootVC.navigationController?.popViewController(animated: false)
                     }
                     
-                    if let transactions = AppModel.sharedManager().transactions as? [BMTransaction] {
-                        if let transaction = transactions.first(where: { $0.id == response.notification.request.identifier }) {
-                            let vc = TransactionViewController()
-                            vc.hidesBottomBarWhenPushed = true
-                            vc.configure(with: transaction)
-                            rootVC.pushViewController(vc: vc)
+                    if rootVC is WalletQRCodeViewController {
+                        rootVC.dismiss(animated: true) {
+                            if let transactions = AppModel.sharedManager().transactions as? [BMTransaction] {
+                                if let transaction = transactions.first(where: { $0.id == response.notification.request.identifier }) {
+                                    let vc = TransactionViewController(transaction: transaction)
+                                    vc.hidesBottomBarWhenPushed = true
+                                    
+                                    if let topVC = UIApplication.getTopMostViewController() {
+                                        topVC.pushViewController(vc: vc)
+                                    }
+                                }
+                            }
                         }
                     }
+                    else{
+                        if let transactions = AppModel.sharedManager().transactions as? [BMTransaction] {
+                            if let transaction = transactions.first(where: { $0.id == response.notification.request.identifier }) {
+                                let vc = TransactionViewController(transaction: transaction)
+                                vc.hidesBottomBarWhenPushed = true
+                                
+                                if let topVC = UIApplication.getTopMostViewController() {
+                                    topVC.pushViewController(vc: vc)
+                                }
+                            }
+                        }
+                    }
+             
                 }
             }
             #endif
@@ -545,6 +579,11 @@ extension NotificationManager : WalletModelDelegate {
                         AppModel.sharedManager().getWalletStatus()
                     }
                 }
+            }
+            else if connected && TGBotManager.sharedManager.isNeedLinking() {
+                TGBotManager.sharedManager.startLinking(completion: { (_ ) in
+                    
+                })
             }
         }
     }

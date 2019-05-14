@@ -32,33 +32,38 @@ class WalletProgressCell: BaseCell {
 
     @IBOutlet weak private var receivingLabel: UILabel!
     @IBOutlet weak private var sentLabel: UILabel!
-    @IBOutlet weak private var maturingLabel: UILabel!
 
     @IBOutlet weak private var arrowIcon: UIImageView!
     
     @IBOutlet weak private var receivingStack: UIStackView!
     @IBOutlet weak private var sentStack: UIStackView!
-    @IBOutlet weak private var maturingStack: UIStackView!
     @IBOutlet weak private var mainStackView: UIStackView!
 
     @IBOutlet weak private var currencyReceivingIcon: UIImageView!
     @IBOutlet weak private var currencySendingIcon: UIImageView!
-    @IBOutlet weak private var currencyMaturingIcon: UIImageView!
 
+    public static func hideHeight() -> CGFloat {
+        return 65
+    }
+    
+    public static func mainHeight() -> CGFloat {
+        return 160
+    }
+    
+    public static func singleHeight() -> CGFloat {
+        return 120
+    }
+    
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        currencyReceivingIcon.image = UIImage.init(named: "iconSymbol")?.withRenderingMode(.alwaysTemplate)
+        currencyReceivingIcon.image = IconSymbolBeam()?.withRenderingMode(.alwaysTemplate)
         currencyReceivingIcon.tintColor = receivingLabel.textColor
         
-        currencySendingIcon.image = UIImage.init(named: "iconSymbol")?.withRenderingMode(.alwaysTemplate)
+        currencySendingIcon.image = IconSymbolBeam()?.withRenderingMode(.alwaysTemplate)
         currencySendingIcon.tintColor = sentLabel.textColor
         
-        currencyMaturingIcon.image = UIImage.init(named: "iconSymbol")?.withRenderingMode(.alwaysTemplate)
-        currencyMaturingIcon.tintColor = maturingLabel.textColor
-        
         selectionStyle = .none
-
     }
     
     override func layoutSubviews() {
@@ -88,16 +93,13 @@ extension WalletProgressCell: Configurable {
         if let status = options.status {
             receivingLabel.text = "+" + String.currency(value: status.realReceiving)
             sentLabel.text = "-" + String.currency(value: status.realSending)
-            maturingLabel.text = String.currency(value: status.realMaturing)
             
-            maturingStack.isHidden = status.realMaturing == 0 ? true : false
             sentStack.isHidden = status.realSending == 0 ? true : false
             receivingStack.isHidden = status.realReceiving == 0 ? true : false
         }
         else{
-            sentLabel.text = "0"
-            maturingLabel.text = "0"
-            receivingLabel.text = "0"
+            sentLabel.text = LocalizableStrings.zero
+            receivingLabel.text = LocalizableStrings.zero
         }
         
         if !options.expand {

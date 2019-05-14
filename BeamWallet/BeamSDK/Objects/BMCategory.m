@@ -1,5 +1,5 @@
 //
-// BMWordSuggestionView.swift
+// BMCategory.m
 // BeamWallet
 //
 // Copyright 2018 Beam Development
@@ -17,8 +17,27 @@
 // limitations under the License.
 //
 
-import Foundation
+#import "BMCategory.h"
 
-class BMWordSuggestionView: UIView {
-    
+@implementation BMCategory
+
+- (void)encodeWithCoder:(NSCoder *)encoder
+{
+    [encoder encodeObject:[NSNumber numberWithInt:self.ID] forKey: @"ID"];
+    [encoder encodeObject:self.name forKey: @"name"];
+    [encoder encodeObject:self.color forKey: @"color"];
 }
+
+-(id)initWithCoder:(NSCoder *)decoder
+{
+    self = [super init];
+    if(self)
+    {
+        self.ID = [[decoder decodeObjectForKey: @"ID"] intValue];
+        self.name = [decoder decodeObjectForKey: @"name"];
+        self.color = [decoder decodeObjectForKey:@"color"];
+    }
+    return self;
+}
+
+@end

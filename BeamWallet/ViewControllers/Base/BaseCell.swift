@@ -26,4 +26,10 @@ class BaseCell: UITableViewCell {
         
         self.contentView.backgroundColor = UIColor.main.marine
     }
+    
+    public func setSelectionBackgroundView() {
+        let selectedView = UIView()
+        selectedView.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+        self.selectedBackgroundView = selectedView
+    }
 }
